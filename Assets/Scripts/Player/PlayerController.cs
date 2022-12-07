@@ -4,7 +4,10 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     [Header("Stats")]
-    [SerializeField] private float speed;
+    [SerializeField] private float walkSpeed;
+    [SerializeField] private float runSpeed;
+    [SerializeField] private float smooth;
+    private float speed;
 
     [Header("Rotation")]
     [SerializeField] private Transform body;
@@ -17,24 +20,33 @@ public class PlayerController : MonoBehaviour
     private const string horizontalInput = "Horizontal";
     private const string verticalInput = "Vertical";
 
-    private Vector3 point;
-    private Quaternion rotationTarget;
+    private bool isMove;
+    private float state;
 
     private void Start()
     {
         _camera = Camera.main;
         _rigidBody = GetComponent<Rigidbody>();
         playerAnimator = GetComponent<PlayerAnimator>();
+
+        speed = walkSpeed;
     }
 
     private void Update()
     {
-        BodyRotation();
+        IsRun(Input.GetKey(KeyCode.LeftShift));
+
+        playerAnimator.SetState(state);
     }
 
     private void FixedUpdate()
     {
         Move();
+
+        if (isMove)
+        {
+            BodyRotation();
+        }
     }
 
     private void Move()
@@ -42,25 +54,25 @@ public class PlayerController : MonoBehaviour
         float moveX = Input.GetAxis(horizontalInput);
         float moveZ = Input.GetAxis(verticalInput);
 
-        Vector3 move = Vector3.right * moveX + Vector3.forward * moveZ;
-        Vector3 moveAnim = transform.right * -moveX + transform.forward * moveZ;
+        isMove = Mathf.Abs(moveX) + Mathf.Abs(moveZ) > 0;
+
+        Vector3 move = transform.right * moveX + transform.forward * moveZ;
 
         _rigidBody.MovePosition(transform.position + move * speed * Time.deltaTime);
 
-        playerAnimator.AnimMove(moveAnim.x, moveAnim.z);
+        playerAnimator.AnimMove(moveX, moveZ);
+    }
+
+    private void IsRun(bool _value)
+    {
+        speed = Mathf.LerpUnclamped(speed, _value ? runSpeed : walkSpeed, smooth * Time.deltaTime);
+        state = Mathf.LerpUnclamped(state, _value ? 1 : 0, smooth * Time.deltaTime);
     }
 
     private void BodyRotation()
     {
-        Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-        Plane planeGround = new Plane(Vector3.up, Vector3.zero);
+        Vector3 viewDirection = transform.position - new Vector3(_camera.transform.position.x, transform.position.y, _camera.transform.position.z);
 
-        if (planeGround.Raycast(ray, out float rayLenght))
-        {
-            point = ray.GetPoint(rayLenght);
-
-            rotationTarget = Quaternion.LookRotation(new Vector3(point.x - transform.position.x, 0, point.z - transform.position.z));
-            _rigidBody.rotation = Quaternion.RotateTowards(transform.rotation, rotationTarget, bodySpeedRotation * Time.deltaTime);
-        }
+        body.forward = Vector3.Slerp(body.forward, viewDirection.normalized, Time.deltaTime * bodySpeedRotation);
     }
 }

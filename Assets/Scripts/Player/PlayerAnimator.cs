@@ -6,6 +6,12 @@ public class PlayerAnimator : MonoBehaviour
 
     private const string animMoveX = "MoveX";
     private const string animMoveZ = "MoveZ";
+    private const string state = "State";
+
+    public void SetState(float _value)
+    {
+        _animator.SetFloat(state, _value);
+    }
 
     public void AnimMove(float moveX, float moveZ)
     {
